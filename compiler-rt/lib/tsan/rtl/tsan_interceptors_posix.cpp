@@ -1335,7 +1335,9 @@ TSAN_INTERCEPTOR(int, pthread_mutex_trylock, void *m) {
 TSAN_INTERCEPTOR(int, pthread_mutex_timedlock, void *m, void *abstime) {
   SCOPED_TSAN_INTERCEPTOR(pthread_mutex_timedlock, m, abstime);
   int res = REAL(pthread_mutex_timedlock)(m, abstime);
-  if (res == 0) {
+  if (res == errno_EOWNERDEAD)
+    MutexRepair(thr, pc, (uptr)m);
+  if (res == 0 || res == errno_EOWNERDEAD) {
     MutexPostLock(thr, pc, (uptr)m, MutexFlagTryLock);
   }
   return res;
