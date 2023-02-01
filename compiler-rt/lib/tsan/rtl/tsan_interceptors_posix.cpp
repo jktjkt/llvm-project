@@ -1359,6 +1359,17 @@ TSAN_INTERCEPTOR(int, pthread_mutex_timedlock, void *m, void *abstime) {
   }
   return res;
 }
+
+TSAN_INTERCEPTOR(int, pthread_mutex_clocklock, void *m, clockid_t clockid, void *abstime) {
+  SCOPED_TSAN_INTERCEPTOR(pthread_mutex_clocklock, m, clockid, abstime);
+  int res = REAL(pthread_mutex_clocklock)(m, clockid, abstime);
+  if (res == errno_EOWNERDEAD)
+    MutexRepair(thr, pc, (uptr)m);
+  if (res == 0 || res == errno_EOWNERDEAD) {
+    MutexPostLock(thr, pc, (uptr)m, MutexFlagTryLock);
+  }
+  return res;
+}
 #endif
 
 #if !SANITIZER_MAC
